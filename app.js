@@ -12,7 +12,7 @@ const UI={ h:$('h'), w:$('w'), set:$('set'), fit:$('fit'), one:$('one'), show:$(
            stageColor:$('stageColor') };
 const TL={ addLayerBtn:$('tlAddLayer'), deleteLayerBtn:$('tlDeleteLayer'), status:$('tlStatus'),
            framesHeader:$('tlFramesHeader'), layerList:$('tlLayerList'), frameList:$('tlFrameList'), body:$('tlBody'),
-           toolbar:$('timelineToolbar'), host:$('timeline'), header:$('tlHeader') };
+           toolbar:$('timelineToolbar'), host:$('timeline') };
 
 const timelineState={ frameCount:120, layers:[], selectedLayerId:null, selectedFrame:0, nextId:1 };
 const POP=$('guidePop'), gVal=$('gVal'), gSave=$('gSave'), gCancel=$('gCancel');
@@ -291,19 +291,10 @@ function syncTimelineScroll(){
   TL.framesHeader.style.transform = `translateX(${-TL.body.scrollLeft}px)`;
 }
 function syncTimelineMetrics(){
-  if (!TL.host) return;
-  if (TL.toolbar){
-    const rect = TL.toolbar.getBoundingClientRect();
-    if (rect && rect.height){
-      TL.host.style.setProperty('--timeline-toolbar-height', `${Math.round(rect.height)}px`);
-    }
-  }
-  if (TL.header){
-    const headerRect = TL.header.getBoundingClientRect();
-    if (headerRect && headerRect.height){
-      const offset = Math.round(headerRect.height + 12);
-      TL.host.style.setProperty('--timeline-header-offset', `${offset}px`);
-    }
+  if (!TL.toolbar || !TL.host) return;
+  const rect = TL.toolbar.getBoundingClientRect();
+  if (rect && rect.height){
+    TL.host.style.setProperty('--timeline-toolbar-height', `${Math.round(rect.height)}px`);
   }
 }
 function bootTimeline(){
