@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Animate v36 (no‑module)</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div id="err" class="err hidden"></div>
+
+  <!-- Top bar -->
+  <div class="bar">
+    <div class="left">
+      <input id="stageColor" type="color" value="#4A4A4A" title="Stage color">
+      <label class="sym" title="Height">↕︎</label>
+      <input id="h" class="num" type="text" inputmode="numeric" value="1920"/>
+      <label class="sym" title="Width">↔︎</label>
+      <input id="w" class="num" type="text" inputmode="numeric" value="1080"/>
+      <button id="set" class="btn">Set</button>
+      <button id="fit" class="btn">Fit</button>
+      <button id="one" class="btn">100%</button>
+      <button id="showstage" class="btn">Show Stage</button>
+      <div id="zoom" class="zoom" aria-hidden="true">100%</div>
+      <button id="btnRulers" class="icon-btn on" title="Rulers">📏</button>
+      <button id="btnGuides" class="icon-btn on" title="Guides / Axes">┼</button>
+      <button id="btnLock" class="icon-btn" title="Lock guides">🔒</button>
+      <button id="btnClear" class="icon-btn" title="Clear guides">🧹</button>
+    </div>
+  </div>
+
+  <!-- Main layout -->
+  <div class="layout">
+    <aside class="tools">
+      <div class="panel-title">Tools</div>
+      <div class="tool-strip" id="toolStrip">
+        <button class="tool-btn icon-btn" data-tool="pose" title="Posing">🕺</button>
+        <button class="tool-btn icon-btn" data-tool="rig" title="Rigging">🦴</button>
+        <button class="tool-btn icon-btn" data-tool="select" title="Selection">V</button>
+        <button class="tool-btn icon-btn" data-tool="subselect" title="Sub selection">A</button>
+        <button class="tool-btn icon-btn" data-tool="pencil" title="Pencil">✏️</button>
+        <button class="tool-btn icon-btn" data-tool="rect" title="Rectangle">▭</button>
+        <button class="tool-btn icon-btn" data-tool="oval" title="Oval">◯</button>
+        <button class="tool-btn icon-btn" data-tool="polystar" title="Poly star">⭐</button>
+        <button class="tool-btn icon-btn" data-tool="line" title="Line">／</button>
+        <button class="tool-btn icon-btn" data-tool="pen" title="Pen">✒️</button>
+        <button class="tool-btn icon-btn" data-tool="text" title="Text">T</button>
+        <button class="tool-btn icon-btn" data-tool="picker" title="Color picker">🎯</button>
+        <button class="tool-btn icon-btn" data-tool="bucket" title="Paint bucket">🪣</button>
+      </div>
+    </aside>
+
+    <!-- Work area grid: [stagePane | split | timeline] -->
+    <div id="wrap" class="work-grid">
+      <div id="stagePane" class="stage-pane">
+        <canvas id="c"></canvas>
+        <!-- DOM fallback rectangle if canvas stage is off-screen (visible by default) -->
+        <div id="stageDom" class="stage-dom"></div>
+        <!-- Move labels -->
+        <div id="moveLabelX" class="guide-label hidden"></div>
+        <div id="moveLabelY" class="guide-label hidden"></div>
+      </div>
+      <div id="split" class="split" title="Drag to resize TimeLine (double‑click toggle)"></div>
+      <aside id="timeline" class="timeline">
+        <div class="panel-title">TimeLine</div>
+        <div class="panel-body">Empty — adjustable width</div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Guide edit popover -->
+  <div id="guidePop" class="popover hidden">
+    <div class="row swatches">
+      <button class="sw" data-c="#FF0000" style="background:#FF0000"></button>
+      <button class="sw" data-c="#00FF00" style="background:#00FF00"></button>
+      <button class="sw" data-c="#0000FF" style="background:#0000FF"></button>
+      <button class="sw" data-c="#FFFF00" style="background:#FFFF00"></button>
+      <button class="sw" data-c="#00FFFF" style="background:#00FFFF"></button>
+      <button class="sw" data-c="#FF00FF" style="background:#FF00FF"></button>
+      <button class="sw" data-c="#000000" style="background:#000000"></button>
+    </div>
+    <div class="row actions compact">
+      <input id="gVal" class="value-only text" type="text" inputmode="numeric" pattern="[0-9\-]*" placeholder="value" />
+      <button id="gSave" class="btn">Save</button>
+      <button id="gCancel" class="btn">Cancel</button>
+    </div>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
