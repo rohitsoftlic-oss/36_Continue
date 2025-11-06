@@ -10,6 +10,11 @@ const STAGE_DOM=$('stageDom'), MOVE_LABEL_X=$('moveLabelX'), MOVE_LABEL_Y=$('mov
 const UI={ h:$('h'), w:$('w'), set:$('set'), fit:$('fit'), one:$('one'), show:$('showstage'), zoom:$('zoom'),
            btnRulers:$('btnRulers'), btnGuides:$('btnGuides'), btnLock:$('btnLock'), btnClear:$('btnClear'),
            stageColor:$('stageColor') };
+const TL={ addLayerBtn:$('tlAddLayer'), deleteLayerBtn:$('tlDeleteLayer'), status:$('tlStatus'),
+           framesHeader:$('tlFramesHeader'), layerList:$('tlLayerList'), frameList:$('tlFrameList'), body:$('tlBody'),
+           toolbar:$('timelineToolbar'), host:$('timeline'), header:$('tlHeader') };
+
+const timelineState={ frameCount:120, layers:[], selectedLayerId:null, selectedFrame:0, nextId:1 };
 const POP=$('guidePop'), gVal=$('gVal'), gSave=$('gSave'), gCancel=$('gCancel');
 const TOOL_STRIP = $('toolStrip');
 
@@ -44,6 +49,295 @@ if (TOOL_STRIP){
     setActiveTool(btn.getAttribute('data-tool'));
   });
   setActiveTool('select');
+}
+
+// --- Timeline model ---
+function createLayer(name){
+  const label = name || `Layer ${timelineState.nextId}`;
+  return { id: timelineState.nextId++, name: label, visible:true, locked:false, keyframes:new Set([0]) };
+}
+function layerIndexById(id){ return timelineState.layers.findIndex(l=>l.id===id); }
+function getLayer(id){ return timelineState.layers[layerIndexById(id)] || null; }
+function ensureTimelineSelection(){
+  if (!timelineState.layers.length){ timelineState.selectedLayerId=null; timelineState.selectedFrame=0; return; }
+  if (!getLayer(timelineState.selectedLayerId)){
+    timelineState.selectedLayerId = timelineState.layers[0].id;
+  }
+  timelineState.selectedFrame = clamp(Math.round(timelineState.selectedFrame), 0, timelineState.frameCount-1);
+}
+function insertLayer(layer, index){
+  const idx = clamp(index, 0, timelineState.layers.length);
+  timelineState.layers.splice(idx, 0, layer);
+}
+function addLayer(afterId){
+  const layer = createLayer();
+  let idx = 0;
+  if (afterId!=null){
+    const existing = layerIndexById(afterId);
+    idx = existing>=0 ? existing+1 : 0;
+  }
+  insertLayer(layer, idx);
+  timelineState.selectedLayerId = layer.id;
+  timelineState.selectedFrame = 0;
+  renderTimeline();
+}
+function deleteSelectedLayer(){
+  if (timelineState.layers.length<=1) return;
+  const idx = layerIndexById(timelineState.selectedLayerId);
+  if (idx<0) return;
+  timelineState.layers.splice(idx,1);
+  const nextIdx = clamp(idx-1, 0, timelineState.layers.length-1);
+  timelineState.selectedLayerId = timelineState.layers[nextIdx]?.id || null;
+  renderTimeline();
+}
+function setSelectedLayer(id){
+  const layer = getLayer(id);
+  if (!layer) return;
+  timelineState.selectedLayerId = layer.id;
+  renderTimeline();
+}
+function setSelectedFrame(frame){
+  timelineState.selectedFrame = clamp(Math.round(frame), 0, timelineState.frameCount-1);
+  renderTimeline();
+}
+function toggleLayerVisibility(id){
+  const layer = getLayer(id); if(!layer) return;
+  layer.visible=!layer.visible;
+  renderTimeline();
+}
+function toggleLayerLock(id){
+  const layer = getLayer(id); if(!layer) return;
+  layer.locked=!layer.locked;
+  renderTimeline();
+}
+function renameLayer(id){
+  const layer = getLayer(id); if(!layer) return;
+  const next = prompt('Layer name', layer.name);
+  if (next!=null){
+    const trimmed = next.trim();
+    if (trimmed){ layer.name=trimmed; renderTimeline(); }
+  }
+}
+function toggleKeyframe(id, frame){
+  const layer = getLayer(id); if(!layer || layer.locked) return;
+  const target = clamp(frame, 0, timelineState.frameCount-1);
+  if (layer.keyframes.has(target)){
+    if (layer.keyframes.size>1 && target!==0){ layer.keyframes.delete(target); }
+  } else {
+    layer.keyframes.add(target);
+  }
+  timelineState.selectedLayerId = id;
+  timelineState.selectedFrame = target;
+  renderTimeline();
+}
+function computeRangeFlags(layer){
+  const frameCount = timelineState.frameCount;
+  const keys = Array.from(layer.keyframes).filter(f=>f>=0 && f<frameCount).sort((a,b)=>a-b);
+  if (!keys.length){ keys.push(0); layer.keyframes.add(0); }
+  const flags = new Array(frameCount).fill(false);
+  for(let i=0;i<keys.length;i++){
+    const start = keys[i];
+    const end = (i+1<keys.length)?keys[i+1]:frameCount;
+    for(let f=start+1; f<end; f++){ flags[f]=true; }
+  }
+  return { keys:new Set(keys), spans:flags };
+}
+function updateTimelineStatus(){
+  if (!TL.status) return;
+  const layer = getLayer(timelineState.selectedLayerId);
+  if (!layer){ TL.status.textContent=''; return; }
+  const frameLabel = `F${timelineState.selectedFrame+1}`;
+  const visibility = layer.visible? 'Visible' : 'Hidden';
+  const locked = layer.locked? 'Locked' : 'Unlocked';
+  TL.status.textContent = `${layer.name} — ${frameLabel} (${visibility}, ${locked})`;
+}
+function renderTimeline(){
+  if (!TL.layerList || !TL.frameList || !TL.framesHeader) return;
+  ensureTimelineSelection();
+  TL.layerList.innerHTML='';
+  TL.frameList.innerHTML='';
+  TL.framesHeader.innerHTML='';
+  const frameCount = timelineState.frameCount;
+  const frameTemplate = `repeat(${frameCount}, var(--timeline-frame-width))`;
+  const frameWidthExpr = `calc(var(--timeline-frame-width) * ${frameCount})`;
+  TL.framesHeader.style.gridTemplateColumns = frameTemplate;
+  TL.framesHeader.style.minWidth = frameWidthExpr;
+  TL.framesHeader.style.width = frameWidthExpr;
+  for(let i=0;i<frameCount;i++){
+    const num = document.createElement('div');
+    num.className='frame-number';
+    if ((i+1)%5===0){ num.classList.add('major'); num.textContent=String(i+1); }
+    TL.framesHeader.appendChild(num);
+  }
+  if (!timelineState.layers.length){
+    const empty=document.createElement('div');
+    empty.className='timeline-empty';
+    empty.textContent='No layers — add one to start animating';
+    TL.layerList.appendChild(empty.cloneNode(true));
+    TL.frameList.appendChild(empty);
+    updateTimelineStatus();
+    if (TL.deleteLayerBtn) TL.deleteLayerBtn.disabled=true;
+    syncTimelineMetrics();
+    syncTimelineScroll();
+    return;
+  }
+  const layersFrag=document.createDocumentFragment();
+  const framesFrag=document.createDocumentFragment();
+  timelineState.layers.forEach((layer, idx)=>{
+    const row=document.createElement('div');
+    row.className='layer-row';
+    row.dataset.layerId=String(layer.id);
+    if (layer.id===timelineState.selectedLayerId) row.classList.add('selected');
+    if (layer.locked) row.classList.add('locked');
+    if (!layer.visible) row.classList.add('hidden');
+
+    const indexLabel=document.createElement('div');
+    indexLabel.className='layer-index';
+    indexLabel.textContent=String(timelineState.layers.length-idx);
+    row.appendChild(indexLabel);
+
+    const controls=document.createElement('div');
+    controls.className='layer-controls';
+    const visBtn=document.createElement('button');
+    visBtn.className='layer-toggle visibility'+(layer.visible?' on':'');
+    visBtn.dataset.action='toggleVisible';
+    visBtn.dataset.layerId=String(layer.id);
+    visBtn.title=layer.visible?'Hide layer':'Show layer';
+    visBtn.textContent=layer.visible?'👁':'🚫';
+    controls.appendChild(visBtn);
+    const lockBtn=document.createElement('button');
+    lockBtn.className='layer-toggle lock'+(layer.locked?' on':'');
+    lockBtn.dataset.action='toggleLock';
+    lockBtn.dataset.layerId=String(layer.id);
+    lockBtn.title=layer.locked?'Unlock layer':'Lock layer';
+    lockBtn.textContent=layer.locked?'🔒':'🔓';
+    controls.appendChild(lockBtn);
+    row.appendChild(controls);
+
+    const name=document.createElement('div');
+    name.className='layer-name';
+    name.textContent=layer.name;
+    name.title='Double-click to rename';
+    row.appendChild(name);
+    layersFrag.appendChild(row);
+
+    const frameRow=document.createElement('div');
+    frameRow.className='frame-row';
+    frameRow.dataset.layerId=String(layer.id);
+    frameRow.style.gridTemplateColumns=frameTemplate;
+    frameRow.style.minWidth = frameWidthExpr;
+    frameRow.style.width = frameWidthExpr;
+    const meta=computeRangeFlags(layer);
+    for(let f=0;f<frameCount;f++){
+      const cell=document.createElement('div');
+      cell.className='frame-cell';
+      cell.dataset.layerId=String(layer.id);
+      cell.dataset.frame=String(f);
+      if (layer.locked) cell.classList.add('locked');
+      if (!layer.visible) cell.classList.add('hidden');
+      if (meta.keys.has(f)) cell.classList.add('keyframe');
+      else if (meta.spans[f]) cell.classList.add('range');
+      else cell.classList.add('blank');
+      if (layer.id===timelineState.selectedLayerId && f===timelineState.selectedFrame) cell.classList.add('selected');
+      frameRow.appendChild(cell);
+    }
+    framesFrag.appendChild(frameRow);
+  });
+  TL.layerList.appendChild(layersFrag);
+  TL.frameList.appendChild(framesFrag);
+  if (TL.deleteLayerBtn) TL.deleteLayerBtn.disabled = timelineState.layers.length<=1;
+  updateTimelineStatus();
+  syncTimelineMetrics();
+  syncTimelineScroll();
+}
+function handleLayerListClick(e){
+  const btn = e.target.closest('.layer-toggle');
+  if (btn){
+    const id = Number(btn.dataset.layerId);
+    if (btn.dataset.action==='toggleVisible') toggleLayerVisibility(id);
+    else if (btn.dataset.action==='toggleLock') toggleLayerLock(id);
+    e.stopPropagation();
+    return;
+  }
+  const row = e.target.closest('.layer-row');
+  if (!row) return;
+  setSelectedLayer(Number(row.dataset.layerId));
+}
+function handleLayerListDoubleClick(e){
+  const row = e.target.closest('.layer-row');
+  if (!row) return;
+  if (e.target.classList.contains('layer-name')){
+    renameLayer(Number(row.dataset.layerId));
+  }
+}
+function handleFrameClick(e){
+  const cell = e.target.closest('.frame-cell');
+  if (!cell) return;
+  const layerId = Number(cell.dataset.layerId);
+  const frame = Number(cell.dataset.frame);
+  timelineState.selectedLayerId = layerId;
+  timelineState.selectedFrame = frame;
+  renderTimeline();
+}
+function handleFrameDoubleClick(e){
+  const cell = e.target.closest('.frame-cell');
+  if (!cell) return;
+  const layerId = Number(cell.dataset.layerId);
+  const frame = Number(cell.dataset.frame);
+  toggleKeyframe(layerId, frame);
+}
+function syncTimelineScroll(){
+  if (!TL.body || !TL.framesHeader) return;
+  TL.framesHeader.style.transform = `translateX(${-TL.body.scrollLeft}px)`;
+}
+function syncTimelineMetrics(){
+  if (!TL.host) return;
+  if (TL.toolbar){
+    const rect = TL.toolbar.getBoundingClientRect();
+    if (rect && rect.height){
+      TL.host.style.setProperty('--timeline-toolbar-height', `${Math.round(rect.height)}px`);
+    }
+  }
+  if (TL.header){
+    const headerRect = TL.header.getBoundingClientRect();
+    if (headerRect && headerRect.height){
+      const offset = Math.round(headerRect.height + 12);
+      TL.host.style.setProperty('--timeline-header-offset', `${offset}px`);
+    }
+  }
+}
+function bootTimeline(){
+  if (!TL.layerList) return;
+  timelineState.layers.length=0;
+  timelineState.nextId=1;
+  for(let i=0;i<3;i++){
+    timelineState.layers.unshift(createLayer());
+  }
+  timelineState.selectedLayerId = timelineState.layers[0]?.id || null;
+  timelineState.selectedFrame = 0;
+  syncTimelineMetrics();
+  renderTimeline();
+}
+
+if (TL.layerList){
+  TL.layerList.addEventListener('click', handleLayerListClick);
+  TL.layerList.addEventListener('dblclick', handleLayerListDoubleClick);
+}
+if (TL.frameList){
+  TL.frameList.addEventListener('click', handleFrameClick);
+  TL.frameList.addEventListener('dblclick', handleFrameDoubleClick);
+}
+if (TL.body){
+  TL.body.addEventListener('scroll', ()=>{ syncTimelineScroll(); });
+}
+if (TL.addLayerBtn){
+  TL.addLayerBtn.addEventListener('click', (e)=>{
+    const after = e.shiftKey ? timelineState.selectedLayerId : null;
+    addLayer(after);
+  });
+}
+if (TL.deleteLayerBtn){
+  TL.deleteLayerBtn.addEventListener('click', ()=>{ deleteSelectedLayer(); });
 }
 
 // --- Drawing ---
@@ -427,11 +721,12 @@ SPLIT.addEventListener('dblclick',()=>{ if (timelinePx>0){ timelinePrevPx=timeli
 window.addEventListener('keydown',(e)=>{
   if((e.key==='t'||e.key==='T') && !e.ctrlKey && !e.metaKey){ if(e.shiftKey){ const wrapW = WRAP.getBoundingClientRect().width||1; timelinePrevPx = Math.round(wrapW*0.30); timelinePx=timelinePrevPx; } else { if (timelinePx>0){ timelinePrevPx=timelinePx; timelinePx=0; } else { timelinePx=timelinePrevPx>0?timelinePrevPx:360; } } applyOverlay(); saveOverlay(); draw(); e.preventDefault(); }
 },{passive:false});
-window.addEventListener('resize', ()=>{ applyOverlay(); draw(); }, {passive:true});
+window.addEventListener('resize', ()=>{ applyOverlay(); syncTimelineMetrics(); draw(); }, {passive:true});
 
 // --- Boot ---
 function init(){
   try{
+    bootTimeline();
     UI.h.value=S.stageH; UI.w.value=S.stageW; UI.stageColor.value=S.stageColor;
     loadOverlay();
     let tries=0;

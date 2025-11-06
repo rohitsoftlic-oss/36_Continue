@@ -61,9 +61,24 @@
         <div id="moveLabelY" class="guide-label hidden"></div>
       </div>
       <div id="split" class="split" title="Drag to resize TimeLine (double‑click toggle)"></div>
-      <aside id="timeline" class="timeline">
-        <div class="panel-title">TimeLine</div>
-        <div class="panel-body">Empty — adjustable width</div>
+      <aside id="timeline" class="timeline has-toolbar">
+        <div class="timeline-toolbar" id="timelineToolbar">
+          <button id="tlAddLayer" class="tl-btn" title="Insert layer (Shift+Click to add below)">➕ Layer</button>
+          <button id="tlDeleteLayer" class="tl-btn" title="Delete selected layer">🗑️ Delete</button>
+          <div class="timeline-status" id="tlStatus" aria-live="polite"></div>
+        </div>
+        <div class="timeline-main">
+          <div class="timeline-header" id="tlHeader">
+            <div class="layer-header">Layers</div>
+            <div class="frames-header" id="tlFramesHeader"></div>
+          </div>
+          <div class="timeline-body" id="tlBody">
+            <div class="timeline-content">
+              <div class="layer-list" id="tlLayerList"></div>
+              <div class="frames-list" id="tlFrameList"></div>
+            </div>
+          </div>
+        </div>
       </aside>
     </div>
   </div>
