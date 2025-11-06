@@ -12,10 +12,9 @@ const UI={ h:$('h'), w:$('w'), set:$('set'), fit:$('fit'), one:$('one'), show:$(
            stageColor:$('stageColor') };
 const TL={ addLayerBtn:$('tlAddLayer'), deleteLayerBtn:$('tlDeleteLayer'), status:$('tlStatus'),
            framesHeader:$('tlFramesHeader'), layerList:$('tlLayerList'), frameList:$('tlFrameList'), body:$('tlBody'),
-           toolbar:$('timelineToolbar'), host:$('timeline'), header:$('tlHeader') };
+           toolbar:$('timelineToolbar'), host:$('timeline') };
 
-const LAYER_COLORS=['#31a3ff','#ff5f52','#ffb74d','#7c3aed','#22d3ee','#f472b6','#a3e635','#f97316'];
-const timelineState={ frameCount:100, layers:[], selectedLayerId:null, selectedFrame:0, nextId:1, paletteIndex:0, fps:24 };
+const timelineState={ frameCount:120, layers:[], selectedLayerId:null, selectedFrame:0, nextId:1 };
 const POP=$('guidePop'), gVal=$('gVal'), gSave=$('gSave'), gCancel=$('gCancel');
 const TOOL_STRIP = $('toolStrip');
 
@@ -55,9 +54,7 @@ if (TOOL_STRIP){
 // --- Timeline model ---
 function createLayer(name){
   const label = name || `Layer ${timelineState.nextId}`;
-  const color=LAYER_COLORS[timelineState.paletteIndex % LAYER_COLORS.length];
-  timelineState.paletteIndex++;
-  return { id: timelineState.nextId++, name: label, visible:true, locked:false, keyframes:new Set([0]), color };
+  return { id: timelineState.nextId++, name: label, visible:true, locked:false, keyframes:new Set([0]) };
 }
 function layerIndexById(id){ return timelineState.layers.findIndex(l=>l.id===id); }
 function getLayer(id){ return timelineState.layers[layerIndexById(id)] || null; }
@@ -152,8 +149,7 @@ function updateTimelineStatus(){
   const frameLabel = `F${timelineState.selectedFrame+1}`;
   const visibility = layer.visible? 'Visible' : 'Hidden';
   const locked = layer.locked? 'Locked' : 'Unlocked';
-  const fpsLabel = `${timelineState.fps.toFixed(2)} FPS`;
-  TL.status.textContent = `${fpsLabel} · ${frameLabel} · ${layer.name} (${visibility}, ${locked})`;
+  TL.status.textContent = `${layer.name} — ${frameLabel} (${visibility}, ${locked})`;
 }
 function renderTimeline(){
   if (!TL.layerList || !TL.frameList || !TL.framesHeader) return;
@@ -191,7 +187,6 @@ function renderTimeline(){
     const row=document.createElement('div');
     row.className='layer-row';
     row.dataset.layerId=String(layer.id);
-    row.style.setProperty('--layer-color', layer.color||'#60a5fa');
     if (layer.id===timelineState.selectedLayerId) row.classList.add('selected');
     if (layer.locked) row.classList.add('locked');
     if (!layer.visible) row.classList.add('hidden');
@@ -219,18 +214,11 @@ function renderTimeline(){
     controls.appendChild(lockBtn);
     row.appendChild(controls);
 
-    const nameWrap=document.createElement('div');
-    nameWrap.className='layer-name';
-    nameWrap.textContent=layer.name;
-    nameWrap.title='Double-click to rename';
-    row.appendChild(nameWrap);
-
-    const chip=document.createElement('div');
-    chip.className='layer-chip';
-    chip.title='Layer color';
-    chip.style.background=layer.color;
-    row.appendChild(chip);
-
+    const name=document.createElement('div');
+    name.className='layer-name';
+    name.textContent=layer.name;
+    name.title='Double-click to rename';
+    row.appendChild(name);
     layersFrag.appendChild(row);
 
     const frameRow=document.createElement('div');
@@ -239,8 +227,6 @@ function renderTimeline(){
     frameRow.style.gridTemplateColumns=frameTemplate;
     frameRow.style.minWidth = frameWidthExpr;
     frameRow.style.width = frameWidthExpr;
-    frameRow.style.setProperty('--layer-color', layer.color||'#60a5fa');
-    if (layer.id===timelineState.selectedLayerId) frameRow.classList.add('selected');
     const meta=computeRangeFlags(layer);
     for(let f=0;f<frameCount;f++){
       const cell=document.createElement('div');
@@ -305,26 +291,16 @@ function syncTimelineScroll(){
   TL.framesHeader.style.transform = `translateX(${-TL.body.scrollLeft}px)`;
 }
 function syncTimelineMetrics(){
-  if (!TL.host) return;
-  if (TL.toolbar){
-    const rect = TL.toolbar.getBoundingClientRect();
-    if (rect && rect.height){
-      TL.host.style.setProperty('--timeline-toolbar-height', `${Math.round(rect.height)}px`);
-    }
-  }
-  if (TL.header){
-    const headerRect = TL.header.getBoundingClientRect();
-    if (headerRect && headerRect.height){
-      const offset = Math.round(headerRect.height + 12);
-      TL.host.style.setProperty('--timeline-header-offset', `${offset}px`);
-    }
+  if (!TL.toolbar || !TL.host) return;
+  const rect = TL.toolbar.getBoundingClientRect();
+  if (rect && rect.height){
+    TL.host.style.setProperty('--timeline-toolbar-height', `${Math.round(rect.height)}px`);
   }
 }
 function bootTimeline(){
   if (!TL.layerList) return;
   timelineState.layers.length=0;
   timelineState.nextId=1;
-  timelineState.paletteIndex=0;
   for(let i=0;i<3;i++){
     timelineState.layers.unshift(createLayer());
   }

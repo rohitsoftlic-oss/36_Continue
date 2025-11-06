@@ -63,41 +63,13 @@
       <div id="split" class="split" title="Drag to resize TimeLine (double‑click toggle)"></div>
       <aside id="timeline" class="timeline has-toolbar">
         <div class="timeline-toolbar" id="timelineToolbar">
-          <div class="toolbar-group layer-group">
-            <button id="tlAddLayer" class="tl-btn icon" title="Insert layer (Shift+Click to add below)" aria-label="Insert layer">
-              ➕
-            </button>
-            <button id="tlDeleteLayer" class="tl-btn icon" title="Delete selected layer" aria-label="Delete layer">
-              🗑️
-            </button>
-          </div>
-          <div class="toolbar-separator" aria-hidden="true"></div>
-          <div class="toolbar-group playback-group" aria-hidden="true">
-            <button class="tl-btn icon" disabled title="Go to first frame">⏮</button>
-            <button class="tl-btn icon" disabled title="Step backward">⏴</button>
-            <button class="tl-btn icon" disabled title="Play">▶</button>
-            <button class="tl-btn icon" disabled title="Step forward">⏵</button>
-            <button class="tl-btn icon" disabled title="Go to last frame">⏭</button>
-          </div>
-          <div class="toolbar-separator" aria-hidden="true"></div>
-          <div class="toolbar-group view-group" aria-hidden="true">
-            <button class="tl-btn icon" disabled title="Onion skin">🧅</button>
-            <button class="tl-btn icon" disabled title="Loop playback">🔁</button>
-            <button class="tl-btn icon" disabled title="Sound toggle">🔈</button>
-          </div>
+          <button id="tlAddLayer" class="tl-btn" title="Insert layer (Shift+Click to add below)">➕ Layer</button>
+          <button id="tlDeleteLayer" class="tl-btn" title="Delete selected layer">🗑️ Delete</button>
           <div class="timeline-status" id="tlStatus" aria-live="polite"></div>
         </div>
         <div class="timeline-main">
-          <div class="timeline-header" id="tlHeader">
-            <div class="layer-header">
-              <span class="header-index" title="Layer order">#</span>
-              <span class="header-controls" aria-hidden="true">
-                <span class="icon">👁</span>
-                <span class="icon">🔒</span>
-              </span>
-              <span class="header-title">Layer Name</span>
-              <span class="header-chip" aria-hidden="true"></span>
-            </div>
+          <div class="timeline-header">
+            <div class="layer-header">Layers</div>
             <div class="frames-header" id="tlFramesHeader"></div>
           </div>
           <div class="timeline-body" id="tlBody">
